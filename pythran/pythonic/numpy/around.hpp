@@ -4,6 +4,8 @@
 #include "pythonic/include/numpy/around.hpp"
 
 #include "pythonic/numpy/rint.hpp"
+#include "pythonic/numpy/power.hpp"
+#include "pythonic/numpy/asarray.hpp"
 #include <nt2/include/functions/pow.hpp>
 
 namespace pythonic
@@ -11,30 +13,46 @@ namespace pythonic
 
   namespace numpy
   {
+    // fast path
+    template <class E>
+    auto around(E const &a) -> decltype(functor::rint{}(a))
+    {
+      return functor::rint{}(a);
+    }
 
     // generic floating point version, pure numpy_expr
     template <class E>
     auto around(E const &a, long decimals) -> typename std::enable_if<
-        !std::is_integral<typename E::dtype>::value,
-        decltype(functor::rint()(a *nt2::pow(typename E::dtype(10), decimals)) /
-                 nt2::pow(typename E::dtype(10), decimals))>::type
+        !details::is_integral_valued<E>::value,
+        decltype(functor::rint{}(a *std::declval<
+                     typename details::is_integral_valued<E>::type>()) /
+                 std::declval<
+                     typename details::is_integral_valued<E>::type>())>::type
     {
-      return functor::rint()(a * nt2::pow(typename E::dtype(10), decimals)) /
-             nt2::pow(typename E::dtype(10), decimals);
+      typename details::is_integral_valued<E>::type const fact =
+          nt2::pow(10., decimals);
+      return functor::rint{}(a * fact) / fact;
     }
 
     // the integer version is only relevant when decimals < 0
     template <class E>
     auto around(E const &a, long decimals) -> typename std::enable_if<
-        std::is_integral<typename E::dtype>::value,
-        decltype(a / (long)nt2::pow(typename E::dtype(10),
-                                    std::max(0L, -decimals)) *
-                 (long)nt2::pow(typename E::dtype(10),
-                                std::max(0L, -decimals)))>::type
+        details::is_integral_valued<E>::value,
+        decltype((a / std::declval<
+                          typename details::is_integral_valued<E>::type>()) *
+                 std::declval<
+                     typename details::is_integral_valued<E>::type>())>::type
     {
-      return a /
-             (long)nt2::pow(typename E::dtype(10), std::max(0L, -decimals)) *
-             (long)nt2::pow(typename E::dtype(10), std::max(0L, -decimals));
+      typename details::is_integral_valued<E>::type const fact =
+          nt2::pow(10L, std::max(0L, -decimals));
+      return (a / fact) * fact;
+    }
+    // list version
+    template <class E>
+    auto around(types::list<E> const &a, long decimals)
+        -> decltype(around(functor::asarray{}(a), decimals))
+    {
+      return around(functor::asarray{}(a), decimals);
     }
 
     DEFINE_FUNCTOR(pythonic::numpy, around);
