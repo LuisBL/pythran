@@ -1,4 +1,5 @@
 from test_env import TestEnv
+import pythran
 
 class TestImportAll(TestEnv):
 
@@ -16,4 +17,11 @@ class TestImportAll(TestEnv):
 
     def test_import_same_name(self):
         self.run_test("from math import *\ndef cos(l): return 100", 0.1, cos=[float])
+
+    def test_import_sys(self):
+        code = 'import sys\ndef unsupported_module(): return sys.stdout'
+
+        with self.assertRaises(pythran.syntax.PythranSyntaxError):
+            pythran.compile_pythrancode("flamby", code)
+
 

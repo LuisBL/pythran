@@ -1,6 +1,7 @@
 """HandleImport transformation takes care of importing user-defined modules."""
 from pythran.passmanager import Transformation
 from pythran.tables import cxx_keywords, MODULES, pythran_ward
+from pythran.syntax import PythranSyntaxError
 
 import ast
 import importlib
@@ -158,9 +159,13 @@ class ImportedModule(object):
         if self.node is None:
             # Not main module, parse now the imported module
             self.is_main_module = False
-            imported_module = importlib.import_module(name)
-            self.node = ast.parse(inspect.getsource(imported_module))
-            assert isinstance(self.node, ast.Module)
+            try:
+                imported_module = importlib.import_module(name)
+                self.node = ast.parse(inspect.getsource(imported_module))
+                assert isinstance(self.node, ast.Module)
+            except Exception:
+                raise PythranSyntaxError(
+                    'Unpythranizable module: %s' % name)
 
         # Recursively add filename information to all nodes, for debug msg
         add_filename_field(self.node, name + ".py")
