@@ -313,6 +313,7 @@ def compile_pythranfile(file_path, output_file=None, module_name=None,
     Returns the generated .so (or .cpp if `cpponly` is set to true).
 
     """
+    print file_path, output_file, module_name
     if not output_file:
         # derive module name from input file name
         _, basename = os.path.split(file_path)
